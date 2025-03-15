@@ -50,13 +50,13 @@ const login = async (req, res) => {
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password", status: "Error" });
+      return res.status(401).json({ error: "Invalid credentials",  message: "Invalid email or password", status: "Error" });
     }
 
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password", status: "Error" });
+      return res.status(401).json({ error: "Invalid credentials",  message: "Invalid email or password", status: "Error" });
     }
 
     // Generate JWT token
