@@ -1,59 +1,88 @@
-const User = require('../models/userModel');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const User = require("../models/userModel");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = 'newtonSchool';
-
-const decodeToken = (req, res, next) => {
+const signup = async (req, res) => {
   try {
-    let { token } = req.body;
-    console.log(token);
-    const decodedToken = jwt.verify(token, JWT_SECRET);
-    res.status(200).json({ payload: decodedToken, status: 'Success' });
-  } catch (err) {
-    res.status(500).json({
-      status: 'error',
-      message: 'Internal Server Error',
-      error: err.message,
+    const { username, email, password } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Please provide all required information", status: "Error" });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists", status: "Error" });
+    }
+
+    // Create new user
+    const newUser = new User({ username, email, password });
+    await newUser.save();
+
+    res.status(201).json({
+      message: "User created successfully",
+      data: {
+        user: {
+          _id: newUser._id,
+          username: newUser.username,
+          email: newUser.email,
+          password: newUser.password, // Hashed
+        },
+      },
     });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", status: "Error", error: error.message });
   }
 };
 
-// Function for user signup
-const signup = async (req, res, next) => {
+const login = async (req, res) => {
   try {
-    // Extract user data from the request body (e.g., username, email, password)
-    // Create a new user instance using the User model
-    // Save the user to the database
-    // Handle success and send a success response with user data
-    // Handle errors and send an error response
-  } catch (err) {
-    res.status(500).json({
-      status: 'error',
-      message: 'Internal Server Error',
-      error: err.message,
-    });
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: "Please provide email and password", status: "Error" });
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password", status: "Error" });
+    }
+
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password", status: "Error" });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, username: user.username, email: user.email },
+      process.env.TOKEN_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.status(200).json({ token, status: "Success" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", status: "Error", error: error.message });
   }
 };
 
-// Function for user login
-const login = async (req, res, next) => {
+const decodeToken = (req, res) => {
   try {
-    // Extract user credentials from the request body (e.g., email, password)
-    // Check if both email and password are provided; if not, send an error response
-    // Find the user in the database by their email
-    // If the user is not found, send an error response
-    // Compare the provided password with the stored password using bcrypt
-    // If passwords do not match, send an error response
-    // If passwords match, generate a JWT token with user information
-    // Send the token in the response
-  } catch (err) {
-    res.status(500).json({
-      status: 'error',
-      message: 'Internal Server Error',
-      error: err.message,
-    });
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "No token provided", status: "Error" });
+    }
+
+    const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+    res.status(200).json({ decoded, status: "Success" });
+  } catch (error) {
+    res.status(401).json({ message: "Invalid token", status: "Error" });
   }
 };
 
-module.exports = { login, signup, decodeToken };
+module.exports = { signup, login, decodeToken };
