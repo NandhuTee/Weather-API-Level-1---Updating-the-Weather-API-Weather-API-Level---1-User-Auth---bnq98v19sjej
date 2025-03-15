@@ -17,19 +17,22 @@ const signup = async (req, res) => {
       return res.status(400).json({ message: "User already exists", status: "Error" });
     }
 
-    // Create new user
-    const newUser = new User({ username, email, password });
+    // Hash password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create new user with hashed password
+    const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
 
-   res.status(201).json({
-  status: "Success",  // ✅ Add this field
-  message: "User created successfully",
-  data: {
-    user: {
-      _id: newUser._id,
-      username: newUser.username,
-      email: newUser.email,
-      password: newUser.password, // Hashed
+    res.status(201).json({
+      status: "Success",
+      message: "User created successfully",
+      data: {
+        user: {
+          _id: newUser._id,
+          username: newUser.username,
+          email: newUser.email,
         },
       },
     });
@@ -37,6 +40,7 @@ const signup = async (req, res) => {
     res.status(500).json({ message: "Server error", status: "Error", error: error.message });
   }
 };
+
 
 const login = async (req, res) => {
   try {
