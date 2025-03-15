@@ -21,14 +21,15 @@ const signup = async (req, res) => {
     const newUser = new User({ username, email, password });
     await newUser.save();
 
-    res.status(201).json({
-      message: "User created successfully",
-      data: {
-        user: {
-          _id: newUser._id,
-          username: newUser.username,
-          email: newUser.email,
-          password: newUser.password, // Hashed
+   res.status(201).json({
+  status: "Success",  // ✅ Add this field
+  message: "User created successfully",
+  data: {
+    user: {
+      _id: newUser._id,
+      username: newUser.username,
+      email: newUser.email,
+      password: newUser.password, // Hashed
         },
       },
     });
